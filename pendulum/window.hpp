@@ -11,6 +11,9 @@
 #include "line.hpp"
 #include "sphere.hpp"
 
+const float gravity{9.81f};
+const float pivotHeight{2.0f};
+
 class Window : public abcg::OpenGLWindow {
 protected:
   void onCreate() override;
@@ -23,13 +26,15 @@ protected:
 
 private:
   // Pendulum parameters
-  float ropeLength{1.0f};
-  float angularVelocity{50.0f};
-  float animationSpeed{1.0f};
+  int ropeLength{100};
+  int animationSpeed{100};
+  int thetaDegrees{30}; // Inclination angle in degrees
 
   // Simulation variables
   float angle{0.0f};
   float deltaTime{0.0f};
+  float angularVelocity{0.0f};
+  float actualRopeLength{};
 
   // Camera control
   glm::vec3 cameraPosition{5.0f, 2.0f,
@@ -75,6 +80,9 @@ private:
   float m_lastY{};
   bool m_firstMouse{true};
   float m_sensitivity{0.1f};
+  float m_ropeLengthInPixels{};
+  float m_angularSpeedInPixels{};
+
 
   // Helper methods
   void handleInput();
@@ -83,9 +91,11 @@ private:
   void calculateMeasurements();
 
   // Function declarations
-  float calculateRopeLengthInPixels(const glm::vec3 &ropeStart,
-                                    const glm::vec3 &ropeEnd);
-  float calculateAngularSpeedInPixels(float angularSpeedRadiansPerSec);
+  float calculateRopeLengthInPixels(const glm::vec3 &ropeStart, const glm::vec3 &ropeEnd,
+                                  const glm::mat4 &viewMatrix, const glm::mat4 &projMatrix);
+  float calculateAngularSpeedInPixels(float angularSpeedRadiansPerSec,
+                                    const glm::mat4 &viewMatrix,
+                                    const glm::mat4 &projMatrix);
   glm::ivec2 m_viewportSize{getWindowSettings().width,
                             getWindowSettings().height};
 };

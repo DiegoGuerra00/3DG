@@ -1,43 +1,54 @@
 // window.cpp
 #include "window.hpp"
 
-float Window::calculateRopeLengthInPixels(const glm::vec3 &ropeStart, const glm::vec3 &ropeEnd) {
-  // Ensure projMatrix and viewMatrix are available here
-  // If they are local variables in onPaint(), you need to store them as member variables
-  // Add member variables to store the matrices
-  // e.g., glm::mat4 m_projMatrix; glm::mat4 m_viewMatrix;
+float Window::calculateRopeLengthInPixels(const glm::vec3 &ropeStart,
+                                          const glm::vec3 &ropeEnd,
+                                          const glm::mat4 &viewMatrix,
+                                          const glm::mat4 &projMatrix) {
+  // Transform ropeStart and ropeEnd to NDC coordinates
+  glm::vec4 startNDC = projMatrix * viewMatrix * glm::vec4(ropeStart, 1.0f);
+  glm::vec4 endNDC = projMatrix * viewMatrix * glm::vec4(ropeEnd, 1.0f);
 
-  // Transform to NDC using the projection and view matrices
-  glm::vec4 startNDC = m_projMatrix * m_viewMatrix * glm::vec4(ropeStart, 1.0f);
-  glm::vec4 endNDC = m_projMatrix * m_viewMatrix * glm::vec4(ropeEnd, 1.0f);
-
-  // Perform perspective division to get NDC
+  // Perform perspective division
   startNDC /= startNDC.w;
   endNDC /= endNDC.w;
 
-  // Map NDC to window coordinates
-  glm::vec2 startScreen{
-      (startNDC.x * 0.5f + 0.5f) * m_viewportSize.x,
-      (1.0f - (startNDC.y * 0.5f + 0.5f)) * m_viewportSize.y};
-  glm::vec2 endScreen{
-      (endNDC.x * 0.5f + 0.5f) * m_viewportSize.x,
-      (1.0f - (endNDC.y * 0.5f + 0.5f)) * m_viewportSize.y};
+  // Convert NDC coordinates to screen coordinates
+  glm::vec2 startScreen{(startNDC.x * 0.5f + 0.5f) * m_viewportSize.x,
+                        (1.0f - (startNDC.y * 0.5f + 0.5f)) * m_viewportSize.y};
+  glm::vec2 endScreen{(endNDC.x * 0.5f + 0.5f) * m_viewportSize.x,
+                      (1.0f - (endNDC.y * 0.5f + 0.5f)) * m_viewportSize.y};
 
-  // Calculate the distance in pixels
+  // Calculate and return the distance in pixels
   return glm::length(endScreen - startScreen);
 }
 
-float Window::calculateAngularSpeedInPixels(float angularSpeedRadiansPerSec) {
-  float theta = glm::radians(30.0f); // Fixed inclination angle
-  float r = ropeLength * std::sin(theta); // Horizontal radius in world space
+float Window::calculateAngularSpeedInPixels(float angularSpeedRadiansPerSec,
+                                            const glm::mat4 &viewMatrix,
+                                            const glm::mat4 &projMatrix) {
+  // Use the current inclination angle
+  float theta = glm::radians(static_cast<float>(thetaDegrees));
 
-  // Screen-space radius
-  glm::vec3 center(0.0f, 2.0f, 0.0f); // Pole top position
-  glm::vec3 ballPosition(center.x + r, center.y - ropeLength * std::cos(theta), center.z);
+  // Horizontal radius in world space
+  float r = actualRopeLength * std::sin(theta);
 
-  float screenRadius = calculateRopeLengthInPixels(center, ballPosition);
+  // Define the center point (pivot point)
+  glm::vec3 center(0.0f, pivotHeight, 0.0f);
 
-  // Angular speed in pixels/sec = radius (in pixels) * angular speed (in radians/sec)
+  // Position of the pendulum bob at a fixed angle (e.g., angle = 0)
+  float fixedAngle = 0.0f;
+  float x = center.x + r * std::cos(fixedAngle);
+  float z = center.z + r * std::sin(fixedAngle);
+  float y = center.y - actualRopeLength * std::cos(theta);
+
+  glm::vec3 ballPosition(x, y, z);
+
+  // Calculate the screen-space radius
+  float screenRadius =
+      calculateRopeLengthInPixels(center, ballPosition, viewMatrix, projMatrix);
+
+  // Angular speed in pixels/sec = radius (in pixels) * angular speed (in
+  // radians/sec)
   return screenRadius * angularSpeedRadiansPerSec;
 }
 
@@ -132,13 +143,62 @@ void Window::onCreate() {
 
   // Set the initial viewport
   glViewport(0, 0, m_viewportSize.x, m_viewportSize.y);
+
+  // Initial calculation of rope length in pixels using fixed camera parameters
+  glm::vec3 fixedCameraPosition{0.0f, 2.5f, 5.0f};
+  glm::vec3 fixedCameraTarget{0.0f, 1.5f, 0.0f};
+  glm::mat4 fixedViewMatrix = glm::lookAt(
+      fixedCameraPosition, fixedCameraTarget, glm::vec3(0.0f, 1.0f, 0.0f));
+
+  float aspect = static_cast<float>(m_viewportSize.x) / m_viewportSize.y;
+  glm::mat4 fixedProjMatrix =
+      glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
+
+  // Define actualRopeLength
+  actualRopeLength = static_cast<float>(ropeLength) / 100.0f; // Converts percentage to meters
+
+  // Calculate initial rope length in pixels
+  float theta = glm::radians(static_cast<float>(thetaDegrees));
+  float fixedAngle = 0.0f;
+
+  // Calculate initial angular velocity
+  float tanTheta = std::tan(theta);
+  angularVelocity = std::sqrt((gravity * tanTheta) / actualRopeLength); // ω in radians per second
+
+  float r = actualRopeLength * std::sin(theta);
+  float x = r * std::cos(fixedAngle);
+  float z = r * std::sin(fixedAngle);
+  float y = pivotHeight - actualRopeLength * std::cos(theta);
+
+  glm::vec3 ropeStart(0.0f, pivotHeight, 0.0f);
+  glm::vec3 ropeEnd(x, y, z);
+
+  m_ropeLengthInPixels = calculateRopeLengthInPixels(
+      ropeStart, ropeEnd, fixedViewMatrix, fixedProjMatrix);
+
+  m_angularSpeedInPixels = calculateAngularSpeedInPixels(
+      angularVelocity, fixedViewMatrix, fixedProjMatrix);
+
+  m_angularSpeedInPixels *= (animationSpeed / 100.0f);
 }
 
 void Window::onUpdate() {
-  // Update the angle based on angular velocity (converted to radians) and
-  // animation speed
+  // Update deltaTime
   deltaTime = static_cast<float>(getDeltaTime());
-  angle += glm::radians(angularVelocity) * animationSpeed * deltaTime;
+
+  // Convert theta to radians
+  float theta = glm::radians(static_cast<float>(thetaDegrees));
+
+  // Define actualRopeLength
+  actualRopeLength = static_cast<float>(ropeLength) / 100.0f; // Converts percentage to meters
+
+  // Calculate angular velocity based on rope length and theta
+  float tanTheta = std::tan(theta);
+  angularVelocity = std::sqrt((gravity * tanTheta) /
+                              actualRopeLength); // ω in radians per second
+
+  // Update the angle based on calculated angular velocity and animation speed
+  angle += angularVelocity * (static_cast<float>(animationSpeed) / 100.0f) * deltaTime;
 
   // Keep angle within [0, 2π]
   angle = std::fmod(angle, 2.0f * glm::pi<float>());
@@ -157,9 +217,8 @@ void Window::onPaint() {
   glUseProgram(program);
 
   // Set up view and projection matrices
-  m_viewMatrix =
-      glm::lookAt(cameraPosition, cameraPosition + cameraTarget,
-                  glm::vec3(0.0f, 1.0f, 0.0f));
+  m_viewMatrix = glm::lookAt(cameraPosition, cameraPosition + cameraTarget,
+                             glm::vec3(0.0f, 1.0f, 0.0f));
 
   // Use m_viewportSize to calculate the aspect ratio
   float aspect = static_cast<float>(m_viewportSize.x) / m_viewportSize.y;
@@ -178,45 +237,71 @@ void Window::onPaint() {
 }
 
 void Window::onPaintUI() {
-  // Create a simple UI to adjust pendulum parameters
   abcg::OpenGLWindow::onPaintUI();
+
+  // Definir a próxima janela para começar minimizada
+  ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
 
   ImGui::Begin("Controles do Pêndulo", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
   // Existing controls
-  ImGui::SliderFloat("Comprimento da Corda", &ropeLength, 0.0f, 2.1f);
-  ImGui::SliderFloat("Velocidade Angular", &angularVelocity, 10.0f, 360.0f);
-  ImGui::SliderFloat("Velocidade da Animação", &animationSpeed, 0.1f, 2.0f);
+  bool thetaChanged = ImGui::SliderInt("Ângulo de Inclinação (°)", &thetaDegrees, 20, 85);
+  bool ropeLengthChanged = ImGui::SliderInt("Comprimento da Corda (%)", &ropeLength, 1, 200);
+  bool animationChanged = ImGui::SliderInt("Velocidade da Animação (%)", &animationSpeed, 100, 1000);
 
   // Add color picker for the ball
   ImGui::ColorEdit3("Cor da Esfera", &ballColor[0]);
 
-  // Calculated values
-  float poleHeight = 2.0f;
-  float theta = glm::radians(30.0f); // Fixed inclination angle
-  float fixedAngle = 0.0f; // Fixed angle for consistent calculation
-  float r = ropeLength * std::sin(theta);
-  float y = poleHeight - ropeLength * std::cos(theta);
-  float x = r * std::cos(fixedAngle);
-  float z = r * std::sin(fixedAngle);
+  // Update actualRopeLength
+  actualRopeLength = static_cast<float>(ropeLength) / 100.0f; // Converts percentage to meters
 
-  glm::vec3 ropeStart(0.0f, poleHeight, 0.0f);
-  glm::vec3 ropeEnd(x, y, z);
+  if (ropeLengthChanged || thetaChanged || animationChanged) {
+    // Recalculate angular velocity
+    float theta = glm::radians(static_cast<float>(thetaDegrees));
+    float tanTheta = std::tan(theta);
 
-  // Calculate rope length in pixels using fixed positions
-  float ropeLengthInPixels = calculateRopeLengthInPixels(ropeStart, ropeEnd);
+    angularVelocity = std::sqrt((gravity * tanTheta) / actualRopeLength); // ω in radians per second
 
-  // Calculate angular speed in pixels/second as before
-  float angularSpeedRadians = glm::radians(angularVelocity);
-  float angularSpeedInPixels = calculateAngularSpeedInPixels(angularSpeedRadians);
+    // Recalculate rope length and angular speed in pixels using fixed camera parameters
+    glm::vec3 fixedCameraPosition{0.0f, 2.5f, 5.0f};
+    glm::vec3 fixedCameraTarget{0.0f, 1.5f, 0.0f};
+    glm::mat4 fixedViewMatrix = glm::lookAt(
+        fixedCameraPosition, fixedCameraTarget, glm::vec3(0.0f, 1.0f, 0.0f));
 
-  // Scale by animation speed
-  float effectiveSpeedInPixels = angularSpeedInPixels * animationSpeed;
+    float aspect = static_cast<float>(m_viewportSize.x) / m_viewportSize.y;
+    glm::mat4 fixedProjMatrix =
+        glm::perspective(glm::radians(45.0f), aspect, 0.1f, 100.0f);
 
-  // Display the results
-  ImGui::Text("Comprimento da Corda: %.2f pixels", ropeLengthInPixels);
-  ImGui::Text("Velocidade Angular: %.2f pixels/sec", angularSpeedInPixels);
-  ImGui::Text("Velocidade de Animação: %.2f pixels/sec", effectiveSpeedInPixels);
+    // **Set theta to 0 for m_ropeLengthInPixels calculation**
+    float thetaForLength = 0.0f; // Rope hanging straight down
+    //float fixedAngle = 0.0f;
+
+    // Positions for m_ropeLengthInPixels
+    //float r_length = actualRopeLength * std::sin(thetaForLength); // r_length = 0
+    //float x_length = r_length * std::cos(fixedAngle); // x_length = 0
+    //float z_length = r_length * std::sin(fixedAngle); // z_length = 0
+    float y_length = pivotHeight - actualRopeLength * std::cos(thetaForLength); // y_length = pivotHeight - actualRopeLength
+
+    glm::vec3 ropeStart(0.0f, pivotHeight, 0.0f);
+    glm::vec3 ropeEnd(0.0f, y_length, 0.0f); // Rope is vertical
+
+    // Recalculate rope length in pixels
+    m_ropeLengthInPixels = calculateRopeLengthInPixels(
+        ropeStart, ropeEnd, fixedViewMatrix, fixedProjMatrix);
+
+    // **Calculate m_angularSpeedInPixels using actual theta**
+    m_angularSpeedInPixels = calculateAngularSpeedInPixels(
+        angularVelocity, fixedViewMatrix, fixedProjMatrix);
+
+    // Adjust for animation speed
+    m_angularSpeedInPixels *= (animationSpeed / 100.0f);
+  }
+
+  // Display the rope length in pixels
+  ImGui::Text("Comprimento da Corda: %.2f pixels", m_ropeLengthInPixels);
+
+  // Display the calculated angular speed in pixels/sec
+  ImGui::Text("Velocidade Angular: %.2f pixels/s", m_angularSpeedInPixels);
 
   ImGui::End();
 }
@@ -236,32 +321,8 @@ void Window::onDestroy() {
   glDeleteProgram(program);
 }
 
-void Window::calculateMeasurements() {
-  // Define key points for the rope
-  glm::vec3 ropeStart(0.0f, 2.0f, 0.0f);                // Pole top
-  float r = ropeLength * std::sin(glm::radians(30.0f)); // Horizontal radius
-  glm::vec3 ropeEnd(r * std::cos(angle),
-                    2.0f - ropeLength * std::cos(glm::radians(30.0f)),
-                    r * std::sin(angle)); // Ball position
-
-  // Calculate rope length in pixels
-  float ropeLengthInPixels = calculateRopeLengthInPixels(ropeStart, ropeEnd);
-
-  // Calculate angular speed in pixels/second
-  float angularSpeedInPixels =
-      calculateAngularSpeedInPixels(glm::radians(angularVelocity));
-
-  // Scale by animation speed
-  float effectiveSpeedInPixels = angularSpeedInPixels * animationSpeed;
-
-  // Display the results
-  fmt::print("Rope Length: {:.2f} pixels\n", ropeLengthInPixels);
-  fmt::print("Angular Speed: {:.2f} pixels/sec\n", angularSpeedInPixels);
-  fmt::print("Effective Speed: {:.2f} pixels/sec\n", effectiveSpeedInPixels);
-}
-
 void Window::handleInput() {
-  float cameraSpeed = 2.5f * deltaTime * animationSpeed;
+  float cameraSpeed = 2.5f * deltaTime * (static_cast<float>(animationSpeed) / 100);
 
   glm::vec3 cameraRight =
       glm::normalize(glm::cross(cameraTarget, glm::vec3(0.0f, 1.0f, 0.0f)));
@@ -359,17 +420,23 @@ void Window::renderGround() {
 }
 
 void Window::renderPendulum() {
+  // Define the height of the pole
   float poleHeight = 2.0f;
-  float theta = glm::radians(30.0f); // Fixed inclination angle (30 degrees)
+
+  // Convert theta to radians
+  float theta = glm::radians(static_cast<float>(thetaDegrees));
+
+  // Define actualRopeLength
+  actualRopeLength = static_cast<float>(ropeLength) / 100.0f;
 
   // Compute the horizontal radius (r)
-  float r = ropeLength * std::sin(theta);
+  float r = actualRopeLength * std::sin(theta);
 
   // Compute the position of the ball
-  float y = poleHeight -
-            ropeLength * std::cos(theta); // Vertical position of the ball
-  float x = r * std::cos(angle);          // Horizontal position along X
-  float z = r * std::sin(angle);          // Horizontal position along Z
+  float y = poleHeight - actualRopeLength *
+                             std::cos(theta); // Vertical position of the ball
+  float x = r * std::cos(angle);              // Horizontal position along X
+  float z = r * std::sin(angle);              // Horizontal position along Z
 
   // Model matrix for the ball
   glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(x, y, z));
@@ -387,11 +454,11 @@ void Window::renderPendulum() {
   modelMatrix = glm::mat4(1.0f);
   glUniformMatrix4fv(modelMatrixLoc, 1, GL_FALSE, &modelMatrix[0][0]);
 
-  // Set the line width
-  glLineWidth(2.0f);
-
   // Set the color to white for the rope and pole
   glUniform4f(colorLoc, 1.0f, 1.0f, 1.0f, 1.0f);
+
+  // Set the line width
+  glLineWidth(2.0f);
 
   // Render the rope (from top of the pole to the ball)
   glm::vec3 ropeStart(0.0f, poleHeight, 0.0f);

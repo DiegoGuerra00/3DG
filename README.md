@@ -42,7 +42,7 @@ O programa consiste em um simulador de um pêndulo preso a uma corda fixada em u
 para alterar configurações do pêndulo, como:
 
 -   Comprimento da corda
--   Velocidade angular
+-   Ãngulo da inclinação
 -   Velocidade da animação
 -   Cor da esfera do pêndulo
 
@@ -50,3 +50,7 @@ para alterar configurações do pêndulo, como:
 A aplicação foi implementada utilizando a biblioteca [ABCg](https://github.com/hbatagelo/abcg), desenvolvida pelo professor Harlen Batagelo para o curso de Computação Gráfica na UFABC, e o pipeline gráfico do OpenGL.
 
 ## Desafios Enfrentados
+
+> Composição visual da corda e mastro do pêndulo
+Um dos desafios foi definir como seria feita a composição da corda e mastro que compõe o pêndulo. Inicialmente foi tentado utilizar uma estrutura de cilindro, porém as movimentações ficaram desalinhadas em relação à esfera.
+Por isso foi decidido utilizar uma linha, que apesar de possiur limitações (a espessura máxima no navegador por exemplo), permitiu o alinhamento com as animações.

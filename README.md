@@ -36,11 +36,11 @@ do ABCg. Com o programa em tela cheia é possível utilizar os seguintes control
 -   ```Caps Lock``` para destravar o mouse da janela
 -   ```ESC``` para sair de tela cheia no navegador
 
-As configurações do sistema, como comprimento e ângulo da corda, podem ser ajustadas a partir da janela pop-up no programa.
+As configurações do sistema do pẽndulo, como comprimento e ângulo da corda, podem ser ajustadas a partir da janela pop-up no programa.
 
 ## Funcionalidades
 
-O programa consiste em um simulador de um pêndulo preso a uma corda fixada em uma haste fixa. É possível utilizar os controles da tela
+O programa consiste em um simulador de um pêndulo cônico preso a uma corda fixada em uma haste fixa. É possível utilizar os controles da tela
 para alterar configurações do pêndulo, como:
 
 -   Comprimento da corda
@@ -58,3 +58,7 @@ A aplicação foi implementada utilizando a biblioteca [ABCg](https://github.com
 > Um dos desafios foi definir como seria feita a composição da corda e mastro que compõe o pêndulo. Inicialmente foi tentado utilizar uma estrutura de cilindro, porém as movimentações ficaram desalinhadas em relação à esfera.
 Por isso foi decidido utilizar uma linha, que apesar de possiur limitações (a espessura máxima no navegador por exemplo), permitiu o alinhamento com as animações.
 
+### Cálculo da velocidade angular
+> Outro desafio que tivemos foi realizar o cálculo da velocidade angular da esfera corretamente. Nas primeiras tentativas notamos que a velocidade da esfera não se comportava como devia ao variar o comprimento da corda.
+Isto foi resolvido revisando os cálculos de velocidade baseados no comprimento da corda. A maior dificuldade para atingir este objetivo ocorreu pois normalmente o cálculo da velocidade angular normalmente se dá utilizando
+o comprimento da corda em metros, enquanto aqui utilizamos o comprimento em pixels.

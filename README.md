@@ -13,7 +13,7 @@ O objetivo deste projeto é desenvolver uma aplicação simples com gráficos 3D
 ## Motivação
 
 Este projeto foi desenvolvido tendo em mente o ensino de movimentos circulares e pêndulos, podendo ser utilizado para demonstrar o 
-movimento circular de um pêndulo ligado a uma corda de comprimento variável.
+movimento circular de um pêndulo ligado a uma corda de comprimento e ângulo variável.
 
 ## Live demo
 
@@ -36,6 +36,8 @@ do ABCg. Com o programa em tela cheia é possível utilizar os seguintes control
 -   ```Caps Lock``` para destravar o mouse da janela
 -   ```ESC``` para sair de tela cheia no navegador
 
+As configurações do sistema, como comprimento e ângulo da corda, podem ser ajustadas a partir da janela pop-up no programa.
+
 ## Funcionalidades
 
 O programa consiste em um simulador de um pêndulo preso a uma corda fixada em uma haste fixa. É possível utilizar os controles da tela
@@ -47,10 +49,12 @@ para alterar configurações do pêndulo, como:
 -   Cor da esfera do pêndulo
 
 ## Implementação
+
 A aplicação foi implementada utilizando a biblioteca [ABCg](https://github.com/hbatagelo/abcg), desenvolvida pelo professor Harlen Batagelo para o curso de Computação Gráfica na UFABC, e o pipeline gráfico do OpenGL.
 
 ## Desafios Enfrentados
 
-> Composição visual da corda e mastro do pêndulo
-Um dos desafios foi definir como seria feita a composição da corda e mastro que compõe o pêndulo. Inicialmente foi tentado utilizar uma estrutura de cilindro, porém as movimentações ficaram desalinhadas em relação à esfera.
+### Composição visual da corda e mastro do pêndulo
+> Um dos desafios foi definir como seria feita a composição da corda e mastro que compõe o pêndulo. Inicialmente foi tentado utilizar uma estrutura de cilindro, porém as movimentações ficaram desalinhadas em relação à esfera.
 Por isso foi decidido utilizar uma linha, que apesar de possiur limitações (a espessura máxima no navegador por exemplo), permitiu o alinhamento com as animações.
+

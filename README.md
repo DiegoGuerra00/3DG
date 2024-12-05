@@ -24,8 +24,6 @@ Também é possível compilar o projeto localmente, seguindo as instruções de 
 
 Nos [releases]() do repositório providenciamos um binário já compilado para Linux.
 
-![Alt text]()
-
 ## Como Usar
 
 O programa foi pensado para ser utilizado apenas em tela cheia, devido à necessidade de captura de inputs de mouse e teclado na janela 
@@ -44,7 +42,7 @@ O programa consiste em um simulador de um pêndulo cônico preso a uma corda fix
 para alterar configurações do pêndulo, como:
 
 -   Comprimento da corda
--   Ãngulo da inclinação
+-   Ângulo da inclinação
 -   Velocidade da animação
 -   Cor da esfera do pêndulo
 
